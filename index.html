@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Who Are You? - Interactive Media Art</title>
+  <!-- p5.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.2/p5.min.js"
+    onerror="var s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/p5@1.9.2/lib/p5.min.js'; document.head.appendChild(s);">
+  </script>
+  <style>
+    html,body{margin:0;padding:0;overflow:hidden;background:#000;color:#eee;font-family:system-ui,-apple-system,Segoe UI,Roboto,'Noto Sans',sans-serif}
+    #ui{position:fixed;left:16px;top:16px;display:flex;gap:8px;align-items:center;z-index:10}
+    #ui button{padding:8px 12px;border:0;border-radius:8px;background:#4caf50;color:#fff;cursor:pointer}
+    #ui button.rec{background:#e53935}
+    #status{color:#ccc}
+    #hint{position:fixed;left:16px;bottom:16px;color:#aaa;font-size:12px;white-space:pre-wrap;opacity:.8}
+    pre#out{position:fixed;right:16px;top:16px;max-width:40vw;max-height:40vh;overflow:auto;color:#9ef;background:rgba(15,30,60,.35);padding:8px;border-radius:6px;font-size:12px}
+    #canvas-holder { position: fixed; inset: 0; z-index: 0; }
+    canvas { position: absolute; inset: 0; display: block; z-index: 0; }
+    #ui, #out, #hint, #keyOverlay { position: fixed; z-index: 10; }
+  </style>
+</head>
+<body>
+  <div id="canvas-holder"></div>
+  <!-- 🔐 OpenAI API Key Overlay -->
+  <style>
+    #keyOverlay{
+      position:fixed; inset:0; display:none; place-items:center;
+      background:rgba(0,0,0,.75); z-index:9999;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,'Noto Sans KR',sans-serif;
+    }
+    #keyCard{
+      width:min(520px,90vw); background:#0f172a; color:#e2e8f0;
+      border:1px solid #334155; border-radius:12px; padding:20px;
+      box-shadow:0 10px 30px rgba(0,0,0,.4);
+    }
+    #keyCard h3{margin:0 0 8px 0; font-size:18px}
+    #keyCard input[type=password], #keyCard input[type=text]{
+      width:100%; padding:10px; border-radius:8px; border:1px solid #475569; background:#0b1220; color:#e2e8f0;
+    }
+    #keyCard button{
+      width:100%; padding:10px; border:0; border-radius:8px; background:#22c55e; color:#052e16; font-weight:600; cursor:pointer;
+      margin-top:10px;
+    }
+    #keyCard small{display:block; opacity:.8; margin-top:10px; line-height:1.4}
+    #keyCard label{display:flex; gap:8px; align-items:center; margin-top:8px; font-size:13px; opacity:.9}
+    </style>
+  <div id="keyOverlay">
+    <div id="keyCard">
+      <h3>OpenAI API Key</h3>
+      <input id="openaiKey" type="password" placeholder="sk-..." autocomplete="off" />
+      <label><input id="rememberKey" type="checkbox" /> 이 브라우저에 키 저장(localStorage)</label>
+      <button id="useKeyBtn">이 키로 시작</button>
+      <small>
+        이 키는 브라우저 메모리(또는 선택 시 localStorage)에만 저장되며,<br>
+        <strong>api.openai.com</strong> 외의 서버로 전송되지 않습니다. (오픈소스 코드로 확인 가능)
+      </small>
+    </div>
+  </div>
+  <script>
+    // Overlay helper
+    (function(){
+      const overlay = document.getElementById('keyOverlay');
+      const keyInput = document.getElementById('openaiKey');
+      const saveChk  = document.getElementById('rememberKey');
+      const btn      = document.getElementById('useKeyBtn');
+  
+      window.__openaiKeyStore = {
+        get(){
+          const cfg = window.CONFIG?.stt || {};
+          if(cfg.saveKeyLocally){
+            const k = localStorage.getItem('__OPENAI_KEY__');
+            if(k) return k;
+          }
+          return window.__OPENAI_KEY || '';
+        },
+        set(k){
+          const cfg = window.CONFIG?.stt || {};
+          if(cfg.saveKeyLocally || document.getElementById('rememberKey')?.checked){
+            try{ localStorage.setItem('__OPENAI_KEY__', k); }catch(e){}
+          }
+          window.__OPENAI_KEY = k;
+        },
+        clear(){
+          try{ localStorage.removeItem('__OPENAI_KEY__'); }catch(e){}
+          window.__OPENAI_KEY = '';
+        },
+        async ensure(){
+          let k = this.get();
+          if(k) return k;
+          // show overlay and wait
+          overlay.style.display='grid';
+          keyInput.value='';
+          keyInput.focus();
+          return new Promise(resolve=>{
+            btn.onclick = ()=>{
+              const key = keyInput.value.trim();
+              if(!key){ alert('API Key를 입력하세요.'); return; }
+              // checkbox 반영
+              if(document.getElementById('rememberKey').checked){
+                window.CONFIG = window.CONFIG || {};
+                window.CONFIG.stt = window.CONFIG.stt || {};
+                window.CONFIG.stt.saveKeyLocally = true;
+              }
+              this.set(key);
+              overlay.style.display='none';
+              resolve(key);
+            };
+          });
+        }
+      };
+    })();
+  </script>
+  <div id="ui">
+    <button id="recBtn">🎙️ Start</button>
+    <span id="status"></span>
+  </div>
+  <pre id="out"></pre>
+  <div id="hint">• Enter로 시작/종료 • “Okay”라고 말하면 종료 • GitHub Pages(정적)에서는 Web Speech API가 기본 동작</div>
+
+  <!-- 설정 → STT → 앱 순으로 로드 -->
+  <script src="./js/config.js"></script>
+  <script src="./js/stt.js"></script>
+  <script src="./js/app.js"></script>
+</body>
+</html>
